@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AVFAudio
 
 struct ContentView: View {
     @State private var wordsGuessed = 0
@@ -20,6 +21,7 @@ struct ContentView: View {
     @State private var imageName = "flower8"
     @State private var playAgainHidden = true
     @State private var playAgainButtonLabel = "Another word?"
+    @State private var audioPlayer: AVAudioPlayer!
     @FocusState private var textFieldIsFocused: Bool
     
     private let wordsToGuess = ["SWIFT", "DOG", "CAT"]
@@ -119,6 +121,7 @@ struct ContentView: View {
             Image(imageName)
                 .resizable()
                 .scaledToFit()
+                .animation(.easeIn(duration: 0.75), value: imageName)
         }
         .ignoresSafeArea(edges: .bottom)
         .onAppear() {
@@ -146,19 +149,26 @@ struct ContentView: View {
     func updateGamePlay() {
         if !wordsToGuess.contains(guessedLetter) {
             guessesRemaining -= 1
-            imageName = "flower\(guessesRemaining)"
+            imageName = "wilt\(guessesRemaining)"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+                playSound(soundName: "incorrect")
+                imageName = "flower\(guessesRemaining)"
+            }
+        } else {
+            playSound(soundName: "correct")
         }
         if !revealedWord.contains("_") { // guesssed when no _ in revealed word
             gameStatusMessage = "You got it! It took you \(lettersGuessed.count) tries."
             wordsGuessed += 1
             currentWordIndex += 1
             playAgainHidden = false
-            
+            playSound(soundName: "word-guessed")
         } else if guessesRemaining == 0 { // out of guesses
             gameStatusMessage = "Out of guesses :("
             wordsMissed += 1
             currentWordIndex += 1
             playAgainHidden = false
+            playSound(soundName: "word-not-guessed")
         } else { // keep guessing
             gameStatusMessage = "You've made \(lettersGuessed.count) guess\(lettersGuessed.count == 1 ? "" : "es")"
         }
@@ -170,6 +180,19 @@ struct ContentView: View {
         
             
         
+    }
+    
+    func playSound(soundName: String) {
+        guard let soundFile = NSDataAsset(name: soundName) else {
+            print("Could not read file named \(soundName)")
+            return
+        }
+        do {
+            audioPlayer = try AVAudioPlayer(data: soundFile.data)
+            audioPlayer.play()
+        } catch {
+            print("ERROR: \(error.localizedDescription) creating audioPlayer.")
+        }
     }
 }
 
